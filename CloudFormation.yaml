@@ -1,0 +1,172 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: Provision EC2
+
+Parameters:
+  VPCCidr:
+    Default: 12.0.0.0/16
+    Description: VPC-CIDR Setup
+    Type: String
+
+  VPCName:
+    Default: wgVPC
+    Description: VPC-Name Setup
+    Type: String
+
+  IGWName:
+    Default: wgIGW
+    Description: InternetGateway-Name Setup
+    Type: String
+
+  SubnetAZ:
+    Default: ap-northeast-1a
+    Description: Subnet-AvailabilityZone Setup
+    Type: String
+
+  SubnetCidr:
+    Default: 12.0.16.0/20
+    Description: Subnet-CIDR Setup
+    Type: String
+
+  SubName:
+    Default: wgSubnet
+    Description: Subnet-Name Setup
+    Type: String
+
+  RouteName:
+    Default: wgRouteTable
+    Description: RouteTable-Name Setup
+    Type: String
+
+  ImageId:
+    Default: ami-0ab0bbbd329f565e6
+    Description: EC2-ImageId Setup
+    Type: String
+
+  KeyName:
+    Default: ec2-key
+    Description: The EC2 Key Pair to allow SSH access to the instance
+    Type: "AWS::EC2::KeyPair::KeyName"
+
+  InstanceType:
+    Default: t3.large
+    Description: EC2-InstanceType Setup
+    Type: String
+
+  EC2Name:
+    Default: wgEC2
+    Description: EC2-Name Setup
+    Type: String
+
+  EC2SGName:
+    Default: wgEC2SG
+    Description: SecurityGroup-Name Setup
+    Type: String
+
+  MyIP:
+    Default: 106.180.25.241/32
+    Description: IP address allowed to access EC2
+    Type: String
+
+Resources: 
+  VPC: 
+    Type: AWS::EC2::VPC
+    Properties: 
+      CidrBlock: !Ref VPCCidr
+      Tags: 
+        - Key: Name
+          Value: !Ref VPCName
+
+  IGW:
+    Type: AWS::EC2::InternetGateway
+    Properties: 
+      Tags:
+        - Key: Name
+          Value: !Ref IGWName
+
+  # IGWをVPCにアタッチ
+  AttachGateway:
+    Type: AWS::EC2::VPCGatewayAttachment
+    Properties: 
+      VpcId: !Ref VPC
+      InternetGatewayId: !Ref IGW
+
+  PubSub:
+    Type: AWS::EC2::Subnet
+    Properties:
+      AvailabilityZone: !Ref SubnetAZ
+      VpcId: !Ref VPC
+      CidrBlock: !Ref SubnetCidr
+      Tags:
+        - Key: Name
+          Value: !Ref SubName
+
+  PubSubRT:
+    Type: AWS::EC2::RouteTable
+    Properties:
+      VpcId: !Ref VPC
+      Tags:
+        - Key: Name
+          Value: !Ref RouteName
+
+  # PubSub-インターネット間のルーティング
+  PubSubToInternet:
+    Type: AWS::EC2::Route
+    Properties:
+      RouteTableId: !Ref PubSubRT
+      DestinationCidrBlock: 0.0.0.0/0
+      GatewayId: !Ref IGW
+
+  # ルートテーブルをサブネットに関連付け
+  AssoPubSubRT:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      SubnetId: !Ref PubSub
+      RouteTableId: !Ref PubSubRT
+
+  EC2: 
+    Type: AWS::EC2::Instance
+    Properties: 
+      ImageId: !Ref ImageId
+      KeyName: !Ref KeyName
+      InstanceType: !Ref InstanceType
+      NetworkInterfaces: 
+        - AssociatePublicIpAddress: "true"
+          DeviceIndex: "0"
+          SubnetId: !Ref PubSub
+          GroupSet:
+            - !Ref EC2SG
+      # ★★
+      UserData: !Base64 |
+        #!/bin/bash
+        
+      Tags:
+          - Key: Name
+            Value: !Ref EC2Name
+
+  EC2SG:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupName: !Ref EC2SGName
+      GroupDescription: Allow SSH and HTTP and RDP access only MyIP
+      VpcId: !Ref VPC
+      SecurityGroupIngress:
+        # http
+        - IpProtocol: tcp
+          FromPort: 80
+          ToPort: 80
+          CidrIp: !Ref MyIP   
+        # rdp
+        - IpProtocol: tcp
+          FromPort: 3389
+          ToPort: 3389
+          CidrIp: !Ref MyIP
+        # ssh
+        - IpProtocol: tcp
+          FromPort: 22
+          ToPort: 22
+          CidrIp: !Ref MyIP
+
+Outputs:
+  EC2PublicIP:
+    Value: !GetAtt EC2.PublicIp
+    Description: Public IP of EC2 instance
