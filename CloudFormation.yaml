@@ -63,7 +63,7 @@ Parameters:
     Type: String
 
   MyIP:
-    Default: 106.180.25.241/32
+    Default: 126.157.195.130/32
     Description: IP address allowed to access EC2
     Type: String
 
@@ -138,6 +138,7 @@ Resources:
       # ★★
       UserData: !Base64 |
         #!/bin/bash
+        sudo yum install -y git
         
       Tags:
           - Key: Name
