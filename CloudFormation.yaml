@@ -135,11 +135,17 @@ Resources:
           SubnetId: !Ref PubSub
           GroupSet:
             - !Ref EC2SG
-      # ★★
       UserData: !Base64 |
         #!/bin/bash
-        sudo yum install -y git
-        
+
+        sudo amazon-linux-extras install -y mate-desktop1.x
+        sudo bash -c 'echo PREFERRED=/usr/bin/mate-session > /etc/sysconfig/desktop'
+        sudo yum install -y tigervnc-server
+        sudo amazon-linux-extras install -y epel
+        sudo yum install -y xrdp
+        sudo systemctl start xrdp
+        sudo systemctl enable xrdp
+
       Tags:
           - Key: Name
             Value: !Ref EC2Name
@@ -166,8 +172,3 @@ Resources:
           FromPort: 22
           ToPort: 22
           CidrIp: !Ref MyIP
-
-Outputs:
-  EC2PublicIP:
-    Value: !GetAtt EC2.PublicIp
-    Description: Public IP of EC2 instance
