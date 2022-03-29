@@ -63,7 +63,7 @@ Parameters:
     Type: String
 
   MyIP:
-    Default: 126.157.195.130/32
+    Default: 126.158.233.171/32
     Description: IP address allowed to access EC2
     Type: String
 
@@ -137,15 +137,46 @@ Resources:
             - !Ref EC2SG
       UserData: !Base64 |
         #!/bin/bash
+        
 
         sudo amazon-linux-extras install -y mate-desktop1.x
         sudo bash -c 'echo PREFERRED=/usr/bin/mate-session > /etc/sysconfig/desktop'
+        
         sudo yum install -y tigervnc-server
         sudo amazon-linux-extras install -y epel
         sudo yum install -y xrdp
         sudo systemctl start xrdp
         sudo systemctl enable xrdp
+        
+        sudo yum install -y ibus-kkc
+        sudo yum install -y google-noto-sans-japanese-fonts
+        sudo echo "export GTK_IM_MODULE=ibus" >> /home/ec2-user/.bashrc
+        sudo echo "export XMODIFIERS=@im=ibus" >> /home/ec2-user/.bashrc
+        sudo echo "export QT_IM_MODULE=ibus" >> /home/ec2-user/.bashrc
+        sudo echo "ibus-daemon -drx" >> /home/ec2-user/.bashrc
+        sudo localectl set-locale LANG=ja_JP.UTF-8
+        sudo timedatectl set-timezone Asia/Tokyo
 
+        sudo touch /etc/yum.repos.d/google.chrome.repo
+        sudo chmod 777 /etc/yum.repos.d/google.chrome.repo
+        sudo echo "[google-chrome]" >> /etc/yum.repos.d/google.chrome.repo
+        sudo echo "name=google-chrome" >> /etc/yum.repos.d/google.chrome.repo
+        sudo echo "baseurl=http://dl.google.com/linux/chrome/rpm/stable/\$basearch" >> /etc/yum.repos.d/google.chrome.repo
+        sudo echo "enabled=1" >> /etc/yum.repos.d/google.chrome.repo
+        sudo echo "gpgcheck=1" >> /etc/yum.repos.d/google.chrome.repo
+        sudo echo "gpgkey=https://dl-ssl.google.com/linux/linux_signing_key.pub" >> /etc/yum.repos.d/google.chrome.repo
+        sudo yum install -y google-chrome-stable
+
+        sudo rpm --import https://packages.microsoft.com/keys/microsoft.asc
+        sudo sh -c 'echo -e "[code]\nname=Visual Studio Code\nbaseurl=https://packages.microsoft.com/yumrepos/vscode\nenabled=1\ngpgcheck=1\ngpgkey=https://packages.microsoft.com/keys/microsoft.asc" > /etc/yum.repos.d/vscode.repo'
+        yum check-update
+        sudo yum install -y code
+
+        sudo amazon-linux-extras install -y nginx1
+        sudo systemctl start nginx
+        sudo systemctl enable nginx
+
+        sudo reboot
       Tags:
           - Key: Name
             Value: !Ref EC2Name
