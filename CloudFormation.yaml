@@ -137,8 +137,6 @@ Resources:
             - !Ref EC2SG
       UserData: !Base64 |
         #!/bin/bash
-        
-
         sudo amazon-linux-extras install -y mate-desktop1.x
         sudo bash -c 'echo PREFERRED=/usr/bin/mate-session > /etc/sysconfig/desktop'
         
